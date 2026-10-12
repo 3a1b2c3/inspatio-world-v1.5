@@ -4,7 +4,7 @@
 # depth-anything-3 is installed separately with --no-deps (see setup_env.sh).
 av==13.1.0
 addict==2.4.0
-decord==0.6.0
+#decord==0.6.0
 diffusers==0.37.0
 easydict==1.13
 einops==0.8.2
