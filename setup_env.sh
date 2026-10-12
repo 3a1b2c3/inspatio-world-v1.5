@@ -7,12 +7,13 @@
 #   which has no Blackwell kernels and no aarch64 build, so a current CUDA torch is installed instead.
 # Optional environment variables:
 #   VENV_DIR        default .venv
-#   PYTHON_VERSION  default 3.10 (the version the README requires)
+#   PYTHON_VERSION  unset by default: uv picks its default Python. Set it (for example 3.10, the version the
+#                   README names) only if you want a specific one.
 set -euo pipefail
 
 CUDA_TAG="${1:-cu130}"
 VENV_DIR="${VENV_DIR:-.venv}"
-PYTHON_VERSION="${PYTHON_VERSION:-3.10}"
+PYTHON_VERSION="${PYTHON_VERSION:-}"
 TORCH_INDEX="https://download.pytorch.org/whl/${CUDA_TAG}"
 
 cd "$(dirname "$0")"
@@ -27,8 +28,12 @@ if [ -e "$VENV_DIR" ]; then
     exit 1
 fi
 
-echo "[1/5] Creating $VENV_DIR with Python $PYTHON_VERSION ..."
-uv venv "$VENV_DIR" --python "$PYTHON_VERSION"
+echo "[1/5] Creating $VENV_DIR (Python: ${PYTHON_VERSION:-uv default}) ..."
+if [ -n "$PYTHON_VERSION" ]; then
+    uv venv "$VENV_DIR" --python "$PYTHON_VERSION"
+else
+    uv venv "$VENV_DIR"
+fi
 
 if [ -x "$VENV_DIR/bin/python" ]; then
     PY="$VENV_DIR/bin/python"

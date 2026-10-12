@@ -7,7 +7,7 @@ This checkout has setup and download scripts for a Blackwell GPU (RTX 5090, GB30
 | File | Purpose |
 | --- | --- |
 | `requirements.txt` | The pip pins from `environment.yml`, without torch/torchvision |
-| `setup_env.sh`, `setup_env.bat` | Create `.venv` with uv and Python 3.10, install a CUDA torch (default `cu130`), then `requirements.txt` and `depth-anything-3` |
+| `setup_env.sh`, `setup_env.bat` | Create `.venv` with uv (its default Python; set `PYTHON_VERSION` to force one), install a CUDA torch (default `cu130`), then `requirements.txt` and `depth-anything-3` |
 | `download_models.py` | Fetch the three checkpoints through the Hugging Face cache into `checkpoints/` |
 | `download_models.sh`, `download_models.bat` | Thin wrappers that call `download_models.py` with the venv |
 | `..\WBench\src\models\camera\inspatio_model.py` | WBench driver, registered as `inspatio` in `src\models\__init__.py` |

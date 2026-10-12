@@ -3,13 +3,13 @@ REM Sets up a uv virtual environment for InSpatio-World 1.5 on Windows (the .ven
 REM Usage: setup_env.bat [cuda_tag]
 REM   cuda_tag defaults to cu130 (Blackwell: RTX 5090). environment.yml pins torch 2.10.0+cu126, which has no
 REM   Blackwell kernels, so a current CUDA torch is installed instead.
-REM Optional environment variables: VENV_DIR (default .venv), PYTHON_VERSION (default 3.10, as the README requires).
+REM Optional environment variables: VENV_DIR (default .venv), PYTHON_VERSION (unset by default, so uv picks its default
+REM Python; set it, for example 3.10 as the README names, only if you want a specific one).
 setlocal
 
 set "CUDA_TAG=%~1"
 if "%CUDA_TAG%"=="" set "CUDA_TAG=cu130"
 if "%VENV_DIR%"=="" set "VENV_DIR=.venv"
-if "%PYTHON_VERSION%"=="" set "PYTHON_VERSION=3.10"
 
 cd /d "%~dp0"
 
@@ -24,8 +24,12 @@ if exist "%VENV_DIR%" (
     exit /b 1
 )
 
-echo [1/5] Creating %VENV_DIR% with Python %PYTHON_VERSION% ...
-uv venv "%VENV_DIR%" --python %PYTHON_VERSION%
+echo [1/5] Creating %VENV_DIR% ...
+if "%PYTHON_VERSION%"=="" (
+    uv venv "%VENV_DIR%"
+) else (
+    uv venv "%VENV_DIR%" --python %PYTHON_VERSION%
+)
 if errorlevel 1 exit /b 1
 set "PY=%CD%\%VENV_DIR%\Scripts\python.exe"
 
