@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # Sets up a uv virtual environment for InSpatio-World 1.5 (the .venv that WBench's inspatio driver uses).
+# On aarch64 (GB300 / DGX Spark) pycolmap and decord have no wheels, so they are left out and Depth
+# Anything 3's top-level pycolmap import is made lazy (see step 4); no conda is needed.
 # Usage: ./setup_env.sh [cuda_tag]
 #   cuda_tag defaults to cu130 (Blackwell: RTX 5090 / GB300). environment.yml pins torch 2.10.0+cu126,
 #   which has no Blackwell kernels and no aarch64 build, so a current CUDA torch is installed instead.
@@ -17,6 +19,11 @@ cd "$(dirname "$0")"
 
 if ! command -v uv >/dev/null 2>&1; then
     echo "uv not found. Install it first: https://docs.astral.sh/uv/getting-started/installation/" >&2
+    exit 1
+fi
+
+if [ -e "$VENV_DIR" ]; then
+    echo "$VENV_DIR already exists. Remove it (or set VENV_DIR) and rerun." >&2
     exit 1
 fi
 
@@ -55,16 +62,39 @@ check_cuda_torch
 echo "[3/5] Installing requirements.txt ..."
 REQUIREMENTS="requirements.txt"
 if [ "$(uname -m)" = "aarch64" ]; then
-    # decord publishes no aarch64 wheel; step 5 checks whether Depth Anything 3 needs it.
-    echo "       aarch64: skipping decord (no wheel published)."
+    # PyPI has no aarch64 wheel (and no source package) for pycolmap, and no aarch64 wheel for decord.
+    echo "       aarch64: skipping pycolmap and decord (no wheels published)."
     REQUIREMENTS="$(mktemp)"
-    grep -v '^decord' requirements.txt > "$REQUIREMENTS"
+    grep -v -e '^pycolmap' -e '^decord' requirements.txt > "$REQUIREMENTS"
 fi
 uv pip install --python "$PY" -r "$REQUIREMENTS"
 check_cuda_torch
 
 echo "[4/5] Installing Depth Anything 3 without its app/benchmark dependencies ..."
 uv pip install --python "$PY" --no-deps depth-anything-3==0.1.1
+if ! "$PY" -c "import pycolmap" 2>/dev/null; then
+    # depth_anything_3.api imports pycolmap at load time through utils/export/colmap.py, but only the
+    # COLMAP export (never used here) calls it. Move that import into the function that needs it.
+    echo "       pycolmap is not installed: making Depth Anything 3's pycolmap import lazy."
+    "$PY" - <<'EOF'
+import importlib.util
+from pathlib import Path
+
+package = importlib.util.find_spec("depth_anything_3").submodule_search_locations[0]
+path = Path(package) / "utils" / "export" / "colmap.py"
+source = path.read_text()
+if "    import pycolmap" in source:
+    print("       already lazy")
+else:
+    top_level = "import pycolmap\n"
+    signature = ") -> None:\n"
+    assert source.count(top_level) == 1 and source.count(signature) == 1, f"unexpected layout: {path}"
+    source = source.replace(top_level, "", 1)
+    source = source.replace(signature, signature + "    import pycolmap\n", 1)
+    path.write_text(source)
+    print(f"       patched {path}")
+EOF
+fi
 check_cuda_torch
 
 echo "[5/5] Checking that the depth step imports ..."
